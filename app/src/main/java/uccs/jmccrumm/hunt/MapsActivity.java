@@ -57,11 +57,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private Location mLastLocation;
     private Marker mCurrLocationMarker;
 
+    LatLng[] stops = new LatLng[3];
+    private int currentStop = 0;
+
     LatLng origin;
     LatLng dest;
     ArrayList<LatLng> MarkerPoints;
     TextView ShowDistanceDuration;
     Polyline line;
+
+    private final static double LAT_PROXIMITY = 0.0006;
+    private final static double LONG_PROXIMITY = 0.0004;
 
 
     protected synchronized void buildGoogleApiClient() {
@@ -131,24 +137,36 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mMap.setMyLocationEnabled(true);
         }
 
-        // add marker
-        LatLng stop1 = new LatLng(38.753429, -104.741196);
-        mMap.addMarker(new MarkerOptions()
-                .position(stop1)
-                .title("Sonic")
-                .icon(BitmapDescriptorFactory.fromResource(R.drawable.pushpin))
-        );
+        // list of stops
+        stops[0] = new LatLng(38.753429, -104.741196);
+        stops[1] = new LatLng(38.755557, -104.741676);
+        stops[2] = new LatLng(38.757539, -104.737838);
 
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(stop1, 15));
+        for (int i=0;i < stops.length;i++){
+            mMap.addMarker(new MarkerOptions()
+                    .position(stops[i])
+                    .title(String.valueOf(i))
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.pushpin))
+            );
+        }
 
+        mMap.animateCamera(CameraUpdateFactory.zoomTo(17));
 
-
-        // Setting onclick event listener for the map
-        mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
+        // Setting onclick event listener for the markers
+        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
 
             @Override
-            public void onMapClick(LatLng point) {
+            public boolean onMarkerClick(Marker marker) {
 
+                // checks to see if user is close enough to the stop
+                if (Math.abs(mLastLocation.getLongitude() - marker.getPosition().longitude) < LONG_PROXIMITY &&
+                        Math.abs(mLastLocation.getLatitude() - marker.getPosition().latitude) < LAT_PROXIMITY &&
+                        !marker.equals(mCurrLocationMarker)) {
+                    marker.remove();
+
+                }
+
+                /*
                 // clearing map and generating new marker points if user clicks on map more than two times
                 if (MarkerPoints.size() > 1) {
                     mMap.clear();
@@ -166,10 +184,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 // Setting the position of the marker
                 options.position(point);
 
-                /**
-                 * For the start location, the color of marker is GREEN and
-                 * for the end location, the color of marker is RED.
-                 */
+                // Start marker is green and dest marker is red
                 if (MarkerPoints.size() == 1) {
                     options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
                 } else if (MarkerPoints.size() == 2) {
@@ -185,7 +200,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     origin = MarkerPoints.get(0);
                     dest = MarkerPoints.get(1);
                 }
+                */
 
+                return true;
             }
         });
 
@@ -247,7 +264,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         //move map camera
         mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-        mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
+
 
         //stop location updates
         if (mGoogleApiClient != null) {
