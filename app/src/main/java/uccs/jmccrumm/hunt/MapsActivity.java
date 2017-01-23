@@ -1,5 +1,6 @@
 package uccs.jmccrumm.hunt;
 
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
@@ -13,6 +14,7 @@ import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.Toast;
 import android.widget.TextView;
 import android.Manifest;
@@ -57,8 +59,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private Location mLastLocation;
     private Marker mCurrLocationMarker;
 
-    LatLng[] stops = new LatLng[3];
-    private int currentStop = 0;
+    private int numStops = 10;
+    public ArrayList<LatLng> stops;
+    public ArrayList<String> hints;
+    private int currentStop;
+    public final static String HINT_EXTRA = "Hint";
 
     LatLng origin;
     LatLng dest;
@@ -66,6 +71,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     TextView ShowDistanceDuration;
     Polyline line;
 
+    // how close user must be to see/click a marker
     private final static double LAT_PROXIMITY = 0.0006;
     private final static double LONG_PROXIMITY = 0.0004;
 
@@ -84,14 +90,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
 
-        ShowDistanceDuration = (TextView) findViewById(R.id.show_distance_time);
-
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             checkLocationPermission();
         }
-
-        // Initializing
-        MarkerPoints = new ArrayList<>();
 
         //show error dialog if Google Play Services not available
         if (!isGooglePlayServicesAvailable()) {
@@ -106,6 +107,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+        // Initializing
+        MarkerPoints = new ArrayList<>();
+        ShowDistanceDuration = (TextView) findViewById(R.id.show_distance_time);
+
+        // Initialize list of hints and markers
+        stops = new ArrayList<>();
+        hints = new ArrayList<>();
+        createHints();
+        createMarkers();
+        currentStop = 0;
     }
 
 
@@ -137,20 +149,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mMap.setMyLocationEnabled(true);
         }
 
-        // list of stops
-        stops[0] = new LatLng(38.753429, -104.741196);
-        stops[1] = new LatLng(38.755557, -104.741676);
-        stops[2] = new LatLng(38.757539, -104.737838);
-
-        for (int i=0;i < stops.length;i++){
-            mMap.addMarker(new MarkerOptions()
-                    .position(stops[i])
-                    .title(String.valueOf(i))
-                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.pushpin))
-            );
-        }
-
         mMap.animateCamera(CameraUpdateFactory.zoomTo(17));
+
+        // add first marker
+        mMap.addMarker(new MarkerOptions()
+                .position(stops.get(currentStop))
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.pushpin))
+        );
 
         // Setting onclick event listener for the markers
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
@@ -163,6 +168,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         Math.abs(mLastLocation.getLatitude() - marker.getPosition().latitude) < LAT_PROXIMITY &&
                         !marker.equals(mCurrLocationMarker)) {
                     marker.remove();
+                    nextStop(currentStop+1);
 
                 }
 
@@ -206,6 +212,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
 
+        /*
         Button btnDriving = (Button) findViewById(R.id.btnDriving);
         btnDriving.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -221,30 +228,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 build_retrofit_and_get_response("walking");
             }
         });
+        */
+
+        // when hints button is clicked, show current hint
+        ImageButton btnHints = (ImageButton) findViewById(R.id.btnHints);
+        btnHints.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showHint(currentStop);
+            }
+        });
     }
 
-    @Override
-    public void onConnected(@Nullable Bundle bundle) {
-        mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(1000);
-        mLocationRequest.setFastestInterval(1000);
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
-        if (ContextCompat.checkSelfPermission(this,
-                android.Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED) {
-            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-        }
-    }
-
-    @Override
-    public void onConnectionSuspended(int i) {
-
-    }
-
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-
-    }
 
     @Override
     public void onLocationChanged(Location location)
@@ -270,6 +265,67 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (mGoogleApiClient != null) {
             LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
         }
+    }
+
+    public void createHints(){
+        hints.add("first hint which is kinda long just to see what happens when screen runs out of space");
+        hints.add("second hint");
+        hints.add("third hint");
+    }
+
+    public void createMarkers(){
+        // list of stops
+        stops.add(new LatLng(38.755557, -104.741676));
+        stops.add(new LatLng(38.753429, -104.741196));
+        stops.add(new LatLng(38.757539, -104.737838));
+    }
+
+    public void showHint(int current){
+        Intent intent = new Intent(this, HintsActivity.class);
+        intent.putExtra("Hint",hints.get(current));
+        startActivity(intent);
+    }
+
+    public void nextStop(int next){
+        // check if end of scavenger hunt has been reached
+        if (stops.get(next) != null){
+            //add next marker
+            currentStop++;
+            mMap.addMarker(new MarkerOptions()
+                    .position(stops.get(currentStop))
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.pushpin))
+            );
+
+            //show next hint
+            showHint(currentStop);
+
+        }
+        else { //just reached final marker, game over
+
+        }
+    }
+
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+        mLocationRequest = new LocationRequest();
+        mLocationRequest.setInterval(1000);
+        mLocationRequest.setFastestInterval(1000);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+        if (ContextCompat.checkSelfPermission(this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+        }
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
     }
 
     public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
