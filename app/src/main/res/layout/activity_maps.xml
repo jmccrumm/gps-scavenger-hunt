@@ -25,21 +25,6 @@
             android:textColorHighlight="@android:color/primary_text_dark"
             android:textSize="30dp"/>
 
-            <!--
-            <Button
-                android:id="@+id/btnDriving"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Driving Mode"/>
-
-            <Button
-                android:id="@+id/btnWalk"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Walking Mode" />
-            -->
         <ImageButton
             android:id="@+id/btnHints"
             android:src="@drawable/hints"

@@ -2,7 +2,6 @@ package uccs.jmccrumm.hunt;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.location.Location;
 import android.os.Build;
 import android.support.annotation.NonNull;
@@ -13,12 +12,8 @@ import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.Toast;
-import android.widget.TextView;
-import android.Manifest;
-
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
@@ -34,18 +29,9 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.maps.model.Polyline;
-import com.google.android.gms.maps.model.PolylineOptions;
 
 import java.util.ArrayList;
-import java.util.List;
 
-import retrofit.Call;
-import retrofit.Callback;
-import retrofit.GsonConverterFactory;
-import retrofit.Response;
-import retrofit.Retrofit;
-import uccs.jmccrumm.hunt.POJO.Example;
 
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
@@ -64,12 +50,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public ArrayList<String> hints;
     private int currentStop;
     public final static String HINT_EXTRA = "Hint";
-
-    LatLng origin;
-    LatLng dest;
-    ArrayList<LatLng> MarkerPoints;
-    TextView ShowDistanceDuration;
-    Polyline line;
 
     // how close user must be to see/click a marker
     private final static double LAT_PROXIMITY = 0.0006;
@@ -107,10 +87,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
-
-        // Initializing
-        MarkerPoints = new ArrayList<>();
-        ShowDistanceDuration = (TextView) findViewById(R.id.show_distance_time);
 
         // Initialize list of hints and markers
         stops = new ArrayList<>();
@@ -162,73 +138,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             @Override
             public boolean onMarkerClick(Marker marker) {
-
-                // checks to see if user is close enough to the stop
-                if (Math.abs(mLastLocation.getLongitude() - marker.getPosition().longitude) < LONG_PROXIMITY &&
-                        Math.abs(mLastLocation.getLatitude() - marker.getPosition().latitude) < LAT_PROXIMITY &&
-                        !marker.equals(mCurrLocationMarker)) {
+                // marker can only be clicked if visible, which means user has made it close enough
+                if (!marker.equals(mCurrLocationMarker)){ // don't count current location as clickable
                     marker.remove();
                     nextStop(currentStop+1);
-
                 }
-
-                /*
-                // clearing map and generating new marker points if user clicks on map more than two times
-                if (MarkerPoints.size() > 1) {
-                    mMap.clear();
-                    MarkerPoints.clear();
-                    MarkerPoints = new ArrayList<>();
-                    ShowDistanceDuration.setText("");
-                }
-
-                // Adding new item to the ArrayList
-                MarkerPoints.add(point);
-
-                // Creating MarkerOptions
-                MarkerOptions options = new MarkerOptions();
-
-                // Setting the position of the marker
-                options.position(point);
-
-                // Start marker is green and dest marker is red
-                if (MarkerPoints.size() == 1) {
-                    options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
-                } else if (MarkerPoints.size() == 2) {
-                    options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED));
-                }
-
-
-                // Add new marker to the Google Map Android API V2
-                mMap.addMarker(options);
-
-                // Checks, whether start and end locations are captured
-                if (MarkerPoints.size() >= 2) {
-                    origin = MarkerPoints.get(0);
-                    dest = MarkerPoints.get(1);
-                }
-                */
-
                 return true;
             }
         });
-
-        /*
-        Button btnDriving = (Button) findViewById(R.id.btnDriving);
-        btnDriving.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                build_retrofit_and_get_response("driving");
-            }
-        });
-
-        Button btnWalk = (Button) findViewById(R.id.btnWalk);
-        btnWalk.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                build_retrofit_and_get_response("walking");
-            }
-        });
-        */
 
         // when hints button is clicked, show current hint
         ImageButton btnHints = (ImageButton) findViewById(R.id.btnHints);
@@ -249,7 +166,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mCurrLocationMarker.remove();
         }
 
-        //Place current location marker
+        //Place current user location marker
         LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
         MarkerOptions markerOptions = new MarkerOptions();
         markerOptions.position(latLng);
@@ -260,6 +177,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //move map camera
         mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
 
+        // checks to see if user is close enough to the next stop
+        if (Math.abs(mLastLocation.getLongitude() - stops.get(currentStop).longitude) < LONG_PROXIMITY &&
+                Math.abs(mLastLocation.getLatitude() - stops.get(currentStop).latitude) < LAT_PROXIMITY) {
+
+
+        }
 
         //stop location updates
         if (mGoogleApiClient != null) {
@@ -391,89 +314,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             // other 'case' lines to check for other permissions this app might request.
             //You can add here other case statements according to your requirement.
         }
-    }
-
-    private void build_retrofit_and_get_response(String type) {
-
-        String url = "https://maps.googleapis.com/maps/";
-
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(url)
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
-
-        RetrofitMaps service = retrofit.create(RetrofitMaps.class);
-
-        Call<Example> call = service.getDistanceDuration("metric", origin.latitude + "," + origin.longitude,dest.latitude + "," + dest.longitude, type);
-
-        call.enqueue(new Callback<Example>() {
-            @Override
-            public void onResponse(Response<Example> response, Retrofit retrofit) {
-
-                try {
-                    //Remove previous line from map
-                    if (line != null) {
-                        line.remove();
-                    }
-                    // This loop will go through all the results and add marker on each location.
-                    for (int i = 0; i < response.body().getRoutes().size(); i++) {
-                        String distance = response.body().getRoutes().get(i).getLegs().get(i).getDistance().getText();
-                        String time = response.body().getRoutes().get(i).getLegs().get(i).getDuration().getText();
-                        ShowDistanceDuration.setText("Distance:" + distance + ", Duration:" + time);
-                        String encodedString = response.body().getRoutes().get(0).getOverviewPolyline().getPoints();
-                        List<LatLng> list = decodePoly(encodedString);
-                        line = mMap.addPolyline(new PolylineOptions()
-                                .addAll(list)
-                                .width(20)
-                                .color(Color.RED)
-                                .geodesic(true)
-                        );
-                    }
-                } catch (Exception e) {
-                    Log.d("onResponse", "There is an error");
-                    e.printStackTrace();
-                }
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-                Log.d("onFailure", t.toString());
-            }
-        });
-
-    }
-
-    private List<LatLng> decodePoly(String encoded) {
-        List<LatLng> poly = new ArrayList<LatLng>();
-        int index = 0, len = encoded.length();
-        int lat = 0, lng = 0;
-
-        while (index < len) {
-            int b, shift = 0, result = 0;
-            do {
-                b = encoded.charAt(index++) - 63;
-                result |= (b & 0x1f) << shift;
-                shift += 5;
-            } while (b >= 0x20);
-            int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-            lat += dlat;
-
-            shift = 0;
-            result = 0;
-            do {
-                b = encoded.charAt(index++) - 63;
-                result |= (b & 0x1f) << shift;
-                shift += 5;
-            } while (b >= 0x20);
-            int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-            lng += dlng;
-
-            LatLng p = new LatLng( (((double) lat / 1E5)),
-                    (((double) lng / 1E5) ));
-            poly.add(p);
-        }
-
-        return poly;
     }
 
     // Checking if Google Play Services Available or not
