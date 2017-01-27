@@ -1,5 +1,6 @@
 package uccs.jmccrumm.hunt;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -10,6 +11,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
@@ -45,10 +47,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private Location mLastLocation;
     private Marker mCurrLocationMarker;
 
-    private int numStops = 10;
     public ArrayList<LatLng> stops;
     public ArrayList<String> hints;
     private int currentStop;
+    private boolean markerVisible = false;
     public final static String HINT_EXTRA = "Hint";
 
     // how close user must be to see/click a marker
@@ -127,12 +129,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         mMap.animateCamera(CameraUpdateFactory.zoomTo(17));
 
-        // add first marker
-        mMap.addMarker(new MarkerOptions()
-                .position(stops.get(currentStop))
-                .icon(BitmapDescriptorFactory.fromResource(R.drawable.pushpin))
-        );
-
         // Setting onclick event listener for the markers
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
 
@@ -141,6 +137,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 // marker can only be clicked if visible, which means user has made it close enough
                 if (!marker.equals(mCurrLocationMarker)){ // don't count current location as clickable
                     marker.remove();
+                    markerVisible = false;
                     nextStop(currentStop+1);
                 }
                 return true;
@@ -172,35 +169,48 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         markerOptions.position(latLng);
         markerOptions.title("Current Position");
         markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
-        mCurrLocationMarker = mMap.addMarker(markerOptions);
+        //mCurrLocationMarker = mMap.addMarker(markerOptions);
 
         //move map camera
         mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
 
         // checks to see if user is close enough to the next stop
         if (Math.abs(mLastLocation.getLongitude() - stops.get(currentStop).longitude) < LONG_PROXIMITY &&
-                Math.abs(mLastLocation.getLatitude() - stops.get(currentStop).latitude) < LAT_PROXIMITY) {
+                Math.abs(mLastLocation.getLatitude() - stops.get(currentStop).latitude) < LAT_PROXIMITY &&
+                !markerVisible) {
 
-
+            // make clue visible
+            mMap.addMarker(new MarkerOptions()
+                    .position(stops.get(currentStop))
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.clue))
+            );
+            markerVisible = true;
         }
 
+        /*
         //stop location updates
         if (mGoogleApiClient != null) {
             LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
         }
+        */
     }
 
     public void createHints(){
-        hints.add("first hint which is kinda long just to see what happens when screen runs out of space");
+        hints.add("first hint which is kinda long just to see what happens when screen runs out of space. " +
+                "will point to first marker so is always 1 ahead of marker numbers. Alright? Hmm? Okay then. Fine." +
+                "Dammit still not long enough, cmon, be long enough please. There you go.");
         hints.add("second hint");
         hints.add("third hint");
+        hints.add("Hooray! You figured out all the clues! Nice job!");
     }
 
     public void createMarkers(){
         // list of stops
         stops.add(new LatLng(38.755557, -104.741676));
-        stops.add(new LatLng(38.753429, -104.741196));
-        stops.add(new LatLng(38.757539, -104.737838));
+        stops.add(new LatLng(38.755590, -104.741600));
+        stops.add(new LatLng(38.755500, -104.741691));
+        //stops.add(new LatLng(38.753429, -104.741196));
+        //stops.add(new LatLng(38.757539, -104.737838));
     }
 
     public void showHint(int current){
@@ -211,21 +221,27 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     public void nextStop(int next){
         // check if end of scavenger hunt has been reached
-        if (stops.get(next) != null){
-            //add next marker
-            currentStop++;
-            mMap.addMarker(new MarkerOptions()
-                    .position(stops.get(currentStop))
-                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.pushpin))
-            );
+        try {
+            stops.get(next);
 
+            //get next marker ready
+            currentStop++;
             //show next hint
             showHint(currentStop);
-
         }
-        else { //just reached final marker, game over
+        catch (IndexOutOfBoundsException e) // no more clues (stops.get(next) threw exception)
+        {
+            //just reached final marker, game over
+            markerVisible = true; // used to assure last marker isn't replaced continuously
 
+            //last 'hint' is final winning message
+            Toast.makeText(MapsActivity.this, hints.get(hints.size()-1),
+                    Toast.LENGTH_LONG).show();
+
+            //reset game/go to menu
+            finish();
         }
+
     }
 
     @Override

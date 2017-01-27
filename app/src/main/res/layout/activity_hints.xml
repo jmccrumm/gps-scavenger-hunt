@@ -13,24 +13,34 @@
         android:layout_alignParentTop="true"
         android:layout_alignParentBottom="true"
         android:scaleType="fitXY"/>
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/btnClose">
 
-    <ScrollView
-        android:id="@+id/SCROLLER_ID"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:scrollbars="vertical"
-        android:fillViewport="true">
-
-        <TextView
-            android:id="@+id/txtHint"
-            android:text=""
-            android:textSize="40sp"
+        <ScrollView
+            android:id="@+id/SCROLLER_ID"
             android:layout_width="fill_parent"
-            android:layout_height="fill_parent"
-            android:layout_margin="50dp"
-            android:layout_weight="1.0"/>
+            android:layout_height="wrap_content"
+            android:scrollbars="vertical"
+            android:fillViewport="true"
+            android:layout_marginTop="25dp"
+            android:layout_marginLeft="25dp"
+            android:layout_marginRight="25dp"
+            android:layout_marginBottom="10dp">
 
-    </ScrollView>
+            <TextView
+                android:id="@+id/txtHint"
+                android:text=""
+                android:textSize="35sp"
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"
+                android:layout_weight="1.0"/>
+
+        </ScrollView>
+
+    </RelativeLayout>
+
 
 
     <ImageButton
